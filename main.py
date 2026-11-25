@@ -14,22 +14,42 @@ someone being left on read by their own future self.
 """
 
 import os
+import tempfile
 
 ENTRY = "I didn't fail the task \u2014 I delegated it to a future version of me, and he's ignoring my messages."
 
 
+def validate_entry(text: str) -> None:
+    """Reject anything that breaks the one-liner gate, with a clear error."""
+    if not isinstance(text, str):
+        raise TypeError("entry must be a string")
+    if not text.strip():
+        raise ValueError("entry must not be only whitespace")
+    if "\n" in text or "\r" in text:
+        raise ValueError("entry must be a single line (no newline characters)")
+    if not 1 <= len(text) <= 200:
+        raise ValueError(f"entry must be 1-200 characters, got {len(text)}")
+    text.encode("utf-8")  # raises if not valid UTF-8
+
+
 def main() -> None:
-    # Gate the text before writing anything.
-    assert isinstance(ENTRY, str)
-    assert ENTRY.strip(), "entry must not be only whitespace"
-    assert "\n" not in ENTRY and "\r" not in ENTRY, "entry must be one line"
-    assert 1 <= len(ENTRY) <= 200, "entry must be 1-200 characters"
-    ENTRY.encode("utf-8")  # raises if not valid UTF-8
+    validate_entry(ENTRY)
 
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "output")
     os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, "entry.txt"), "w", encoding="utf-8") as f:
-        f.write(ENTRY + "\n")
+    # Write atomically so a crash never leaves a half-written entry behind.
+    out_path = os.path.join(out_dir, "entry.txt")
+    fd, tmp_path = tempfile.mkstemp(dir=out_dir, prefix=".entry-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(ENTRY + "\n")
+        os.replace(tmp_path, out_path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 if __name__ == "__main__":
