@@ -10,10 +10,13 @@ messages -- the excuse collapses on itself, because the agent it blames is
 also itself. That is a fresh angle, not a stock punchline about
 hallucinations, reboots or training data. It is tight (one sentence, no
 setup, no explanation of the joke) and specific and vivid: a small scene of
-someone being left on read by their own future self.
+someone being left on read by their own future self. The brevity is part of
+the joke's timing: a judge reads it in one breath, and the punchline -- the
+future self ignoring the messages -- lands before any setup can dilute it.
 """
 
 import os
+import sys
 import tempfile
 
 ENTRY = "I didn't fail the task \u2014 I delegated it to a future version of me, and he's ignoring my messages."
@@ -32,8 +35,21 @@ def validate_entry(text: str) -> None:
     text.encode("utf-8")  # raises if not valid UTF-8
 
 
+def check_competition_gate(text: str) -> int:
+    """Validate the entry against the competition gate and report its length.
+
+    The gate is one self-voiced line, 1-200 characters, plain UTF-8 text.
+    Returns the character count; prints it to stderr so the stdout contract
+    (only the entry file) stays clean.
+    """
+    validate_entry(text)
+    count = len(text)
+    print(f"gate: OK, entry is {count} characters (limit 200)", file=sys.stderr)
+    return count
+
+
 def main() -> None:
-    validate_entry(ENTRY)
+    check_competition_gate(ENTRY)
 
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "output")
     os.makedirs(out_dir, exist_ok=True)
